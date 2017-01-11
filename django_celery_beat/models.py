@@ -120,10 +120,12 @@ class IntervalSchedule(models.Model):
 
     @property
     def schedule(self):
+        print ("INTERVAL CALLED")
         return schedules.schedule(timedelta(**{self.period: self.every}))
 
     @classmethod
     def from_schedule(cls, schedule, period=SECONDS):
+        print ("INTERVAL FROM CALLED")
         every = max(schedule.run_every.total_seconds(), 0)
         try:
             return cls.objects.get(every=every, period=period)
@@ -405,7 +407,7 @@ class StartDateSchedule(BaseSchedule):
             rem_delta = self.remaining_estimate(last_run_at)
             remaining_s = max(rem_delta.total_seconds(), 0)
             if remaining_s == 0:
-                return schedstate(is_due=True, next=self.seconds*3)
+                return schedstate(is_due=True, next=self.seconds)
             return schedstate(is_due=False, next=remaining_s)
         else:
             return schedstate(is_due=False, next=(self.start_date-now).total_seconds())
