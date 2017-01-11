@@ -406,9 +406,9 @@ class StartDateSchedule(BaseSchedule):
         
     def is_due(self, last_run_at):
         now = datetime.datetime.now(tz=pytz.utc)
-        print ("is due")
         if now >= self.start_date:
             if self.has_run==False:
+                print ("{0}, {1}".format(self.has_run, self))
                 self.has_run=True
                 return schedstate(is_due=True, next=self.seconds)
                 
