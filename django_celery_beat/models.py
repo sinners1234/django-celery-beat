@@ -170,6 +170,7 @@ class IntervalStartDateSchedule(IntervalSchedule):
 
     @classmethod
     def from_schedule(cls, schedule, period=SECONDS):
+        print ("CALLED TWO")
         every = max(schedule.run_every.total_seconds(), 0)
         start_date = schedule.start_date
         try:
