@@ -404,6 +404,7 @@ class StartDateSchedule(BaseSchedule):
         )
         
     def is_due(self, last_run_at):
+        now = datetime.datetime.now(tz=pytz.utc)
         # last run at isnt a good indication of whether to run the first time or not
         if now >= self.start_date and (last_run_at < now or last_run_at is None):
             print ("first if")
