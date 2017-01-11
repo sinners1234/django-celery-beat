@@ -395,7 +395,6 @@ class StartDateSchedule(BaseSchedule):
         self.run_every = maybe_timedelta(run_every)
         self.start_date=start_date
         self.relative=relative
-        self.has_run=False
         super(StartDateSchedule, self).__init__(nowfun=nowfun, app=app)
     
     def remaining_estimate(self, last_run_at):
@@ -406,13 +405,8 @@ class StartDateSchedule(BaseSchedule):
         
     def is_due(self, last_run_at):
         now = datetime.datetime.now(tz=pytz.utc)
+        print ("last run at: {0}".format(last_run_at))
         if now >= self.start_date:
-            if self.has_run==False:
-                print ("{0}, {1}".format(self.has_run, self))
-                self.has_run=True
-                return schedstate(is_due=True, next=self.seconds)
-                
-            
             last_run_at = self.maybe_make_aware(last_run_at)
             rem_delta = self.remaining_estimate(last_run_at)
             remaining_s = max(rem_delta.total_seconds(), 0)
