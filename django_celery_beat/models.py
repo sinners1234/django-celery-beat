@@ -6,10 +6,21 @@ from datetime import timedelta
 from django.core.exceptions import MultipleObjectsReturned, ValidationError
 from django.db import models
 from django.db.models import signals
+from django.utils import timezone
 from django.utils.translation import ugettext_lazy as _
 
 from celery import schedules
 from celery.five import python_2_unicode_compatible
+
+from celery.schedules import BaseSchedule, schedstate
+from celery.utils.time import (
+    weekday, maybe_timedelta, remaining, humanize_seconds,
+    timezone, maybe_make_aware, ffwd, localize
+)
+
+
+import pytz
+import datetime
 
 from . import managers
 from .utils import now
@@ -130,6 +141,53 @@ class IntervalSchedule(models.Model):
     @property
     def period_singular(self):
         return self.period[:-1]
+        
+@python_2_unicode_compatible
+class IntervalStartDateSchedule(IntervalSchedule):
+    """Schedule executing every n seconds."""
+
+    DAYS = DAYS
+    HOURS = HOURS
+    MINUTES = MINUTES
+    SECONDS = SECONDS
+    MICROSECONDS = MICROSECONDS
+
+    PERIOD_CHOICES = PERIOD_CHOICES
+
+    start_date = models.DateTimeField()
+    
+    class Meta:
+        """Table information."""
+
+        verbose_name = _('interval')
+        verbose_name_plural = _('intervals')
+        ordering = ['period', 'every']
+
+    @property
+    def schedule(self):
+        print ("CALLED")
+        return StartDateSchedule(run_every=timedelta(**{self.period: self.every}), start_date=self.start_date)
+
+    @classmethod
+    def from_schedule(cls, schedule, period=SECONDS):
+        every = max(schedule.run_every.total_seconds(), 0)
+        start_date = schedule.start_date
+        try:
+            return cls.objects.get(every=every, period=period, start_date=start_date)
+        except cls.DoesNotExist:
+            return cls(every=every, period=period, start_date=start_date)
+        except MultipleObjectsReturned:
+            cls.objects.filter(every=every, period=period, start_date=start_date).delete()
+            return cls(every=every, period=period, start_date=start_date)
+
+    def __str__(self):
+        if self.every == 1:
+            return _('every {0.period_singular}').format(self)
+        return _('every {0.every} {0.period}').format(self)
+
+    @property
+    def period_singular(self):
+        return self.period[:-1]
 
 
 @python_2_unicode_compatible
@@ -187,7 +245,7 @@ class CrontabSchedule(models.Model):
         except MultipleObjectsReturned:
             cls.objects.filter(**spec).delete()
             return cls(**spec)
-
+            
 
 class PeriodicTasks(models.Model):
     """Helper table for tracking updates to periodic tasks."""
@@ -317,6 +375,62 @@ class PeriodicTask(models.Model):
             return self.interval.schedule
         if self.crontab:
             return self.crontab.schedule
+            
+# probably doesnt belong here but where else should it go?           
+class StartDateSchedule(BaseSchedule):
+    def __init__(self, run_every=None, start_date=None, relative=False, nowfun=None, app=None):
+        self.run_every = maybe_timedelta(run_every)
+        self.start_date=start_date
+        self.relative=relative
+        self.has_run=False
+        super(StartDateSchedule, self).__init__(nowfun=nowfun, app=app)
+    
+    def remaining_estimate(self, last_run_at):
+        return remaining(
+            self.maybe_make_aware(last_run_at), self.run_every,
+            self.maybe_make_aware(self.now()), self.relative,
+        )
+        
+    def is_due(self, last_run_at):
+        now = datetime.datetime.now(tz=pytz.utc)
+        
+        if now >= self.start_date:
+            if self.has_run==False:
+                self.has_run=True
+                return schedstate(is_due=True, next=self.seconds)
+                
+            
+            last_run_at = self.maybe_make_aware(last_run_at)
+            rem_delta = self.remaining_estimate(last_run_at)
+            remaining_s = max(rem_delta.total_seconds(), 0)
+            if remaining_s == 0:
+                return schedstate(is_due=True, next=self.seconds)
+            return schedstate(is_due=False, next=remaining_s)
+        else:
+            return schedstate(is_due=False, next=(self.start_date-now).total_seconds())
+            
+
+    def __repr__(self):
+        return '<freq: {0.human_seconds}>'.format(self)
+
+    def __eq__(self, other):
+        if isinstance(other, StartDateSchedule):
+            return self.run_every == other.run_every
+        return self.run_every == other
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __reduce__(self):
+        return self.__class__, (self.run_every, self.start_date, self.relative, self.nowfun)
+
+    @property
+    def seconds(self):
+        return max(self.run_every.total_seconds(), 0)
+
+    @property
+    def human_seconds(self):
+        return humanize_seconds(self.seconds)
 
 
 signals.pre_delete.connect(PeriodicTasks.changed, sender=PeriodicTask)
