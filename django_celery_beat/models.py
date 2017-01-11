@@ -404,9 +404,12 @@ class StartDateSchedule(BaseSchedule):
         )
         
     def is_due(self, last_run_at):
-        now = datetime.datetime.now(tz=pytz.utc)
-        print ("last run at: {0}".format(last_run_at))
-        if now >= self.start_date:
+        # last run at isnt a good indication of whether to run the first time or not
+        if now >= self.start_date and (self.last_run_at < now or self.last_run_at is None):
+            print ("first if")
+            return schedstate(is_due=True, next=self.seconds)
+        elif now >= self.start_date and self.last_run_at > now:
+            print ("second if")
             last_run_at = self.maybe_make_aware(last_run_at)
             rem_delta = self.remaining_estimate(last_run_at)
             remaining_s = max(rem_delta.total_seconds(), 0)
@@ -414,8 +417,9 @@ class StartDateSchedule(BaseSchedule):
                 return schedstate(is_due=True, next=self.seconds)
             return schedstate(is_due=False, next=remaining_s)
         else:
+            print ("third if")
             return schedstate(is_due=False, next=(self.start_date-now).total_seconds())
-            
+
 
     def __repr__(self):
         return '<freq: {0.human_seconds}>'.format(self)
