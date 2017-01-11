@@ -288,6 +288,10 @@ class PeriodicTask(models.Model):
         IntervalSchedule,
         null=True, blank=True, verbose_name=_('interval'),
     )
+    interval_start_date = models.ForeignKey(
+        IntervalStartDateSchedule,
+        null=True, blank=True, verbose_name=_('interval'),
+    )
     crontab = models.ForeignKey(
         CrontabSchedule, null=True, blank=True, verbose_name=_('crontab'),
         help_text=_('Use one of interval/crontab'),
@@ -341,13 +345,13 @@ class PeriodicTask(models.Model):
 
     def validate_unique(self, *args, **kwargs):
         super(PeriodicTask, self).validate_unique(*args, **kwargs)
-        if not self.interval and not self.crontab and not self.solar:
+        if not self.interval and not self.crontab and not self.solar and not self.interval_start_date:
             raise ValidationError({
                 'interval': [
                     'One of interval, crontab, or solar must be set.'
                 ]
             })
-        if self.interval and self.crontab and self.solar:
+        if self.interval and self.crontab and self.solar and self.interval_start_date:
             raise ValidationError({
                 'crontab': [
                     'Only one of interval, crontab, or solar must be set'
@@ -378,6 +382,8 @@ class PeriodicTask(models.Model):
             return self.interval.schedule
         if self.crontab:
             return self.crontab.schedule
+        if self.interval_start_date:
+            return self.interval_start_date.schedule
             
 # probably doesnt belong here but where else should it go?           
 class StartDateSchedule(BaseSchedule):
