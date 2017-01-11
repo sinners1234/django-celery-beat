@@ -145,7 +145,7 @@ class IntervalSchedule(models.Model):
         return self.period[:-1]
         
 @python_2_unicode_compatible
-class IntervalStartDateSchedule(IntervalSchedule):
+class IntervalStartDateSchedule(models.Model):
     """Schedule executing every n seconds."""
 
     DAYS = DAYS
@@ -155,7 +155,11 @@ class IntervalStartDateSchedule(IntervalSchedule):
     MICROSECONDS = MICROSECONDS
 
     PERIOD_CHOICES = PERIOD_CHOICES
-
+    
+    every = models.IntegerField(_('every'), null=False)
+    period = models.CharField(
+        _('period'), max_length=24, choices=PERIOD_CHOICES,
+    )
     start_date = models.DateTimeField()
     
     class Meta:
@@ -444,6 +448,10 @@ class StartDateSchedule(BaseSchedule):
 
 signals.pre_delete.connect(PeriodicTasks.changed, sender=PeriodicTask)
 signals.pre_save.connect(PeriodicTasks.changed, sender=PeriodicTask)
+signals.pre_delete.connect(
+    PeriodicTasks.update_changed, sender=IntervalStartDateSchedule)
+signals.post_save.connect(
+    PeriodicTasks.update_changed, sender=IntervalStartDateSchedule)
 signals.pre_delete.connect(
     PeriodicTasks.update_changed, sender=IntervalSchedule)
 signals.post_save.connect(
