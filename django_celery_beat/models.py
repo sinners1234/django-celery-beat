@@ -394,7 +394,7 @@ class StartDateSchedule(BaseSchedule):
         
     def is_due(self, last_run_at):
         now = datetime.datetime.now(tz=pytz.utc)
-        
+        print ("is due")
         if now >= self.start_date:
             if self.has_run==False:
                 self.has_run=True
