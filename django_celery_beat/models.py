@@ -411,7 +411,7 @@ class StartDateSchedule(BaseSchedule):
             last_run_at = (pytz.utc.localize(last_run_at))
             rem = max((last_run_at - now).total_seconds(), 0)
             if rem == 0:
-                return schedstate(is_due=True, next=self.seconds)
+                return schedstate(is_due=True, next=self.run_every)
             return schedstate(is_due=False, next=rem)
         else:
             print ("third if")
