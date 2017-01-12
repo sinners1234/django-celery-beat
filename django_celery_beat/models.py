@@ -407,12 +407,12 @@ class StartDateSchedule(BaseSchedule):
         now = datetime.datetime.now(tz=pytz.utc)
         # last run at isnt a good indication of whether to run the first time or not
         if now >= self.start_date and (pytz.utc.localize(last_run_at) < now or last_run_at is None):
-            print ("first if")
-            last_run_at = (pytz.utc.localize(last_run_at))
-            rem = max((last_run_at - now).total_seconds(), 0)
-            if rem == 0:
-                return schedstate(is_due=True, next=self.run_every.total_seconds())
-            return schedstate(is_due=False, next=rem)
+            last_run_at = self.maybe_make_aware(last_run_at)
+            rem_delta = self.remaining_estimate(last_run_at)
+            remaining_s = max(rem_delta.total_seconds(), 0)
+            if remaining_s == 0:
+                return schedstate(is_due=True, next=self.seconds)
+            return schedstate(is_due=False, next=remaining_s)
         else:
             print ("third if")
             return schedstate(is_due=False, next=(self.start_date-now).total_seconds())
