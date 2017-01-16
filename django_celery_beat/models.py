@@ -410,7 +410,9 @@ class StartDateSchedule(BaseSchedule):
             last_run_at = self.maybe_make_aware(last_run_at)
             rem_delta = self.remaining_estimate(last_run_at)
             remaining_s = max(rem_delta.total_seconds(), 0)
+            print (remaining_s)
             if remaining_s == 0:
+                print ("should be running")
                 return schedstate(is_due=True, next=self.seconds)
             return schedstate(is_due=False, next=remaining_s)
         else:
